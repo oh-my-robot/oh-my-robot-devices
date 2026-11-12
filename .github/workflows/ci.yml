@@ -14,10 +14,9 @@ permissions:
   contents: read
 
 env:
-  # OMR-16 引导期：框架 OMR-16 分支尚未合入 integration。
-  # 合入后改为 oh-my-robot/oh-my-robot-framework + 固定 tag/commit。
-  FRAMEWORK_REPOSITORY: ErBamboo/oh-my-robot-framework
-  FRAMEWORK_REF: feature/OMR-16-devices-extract
+  # 固定框架版本，避免跟随 integration 漂移；框架发版后改为 tag。
+  FRAMEWORK_REPOSITORY: oh-my-robot/oh-my-robot-framework
+  FRAMEWORK_REF: cf1c27e
 
 jobs:
   format:
