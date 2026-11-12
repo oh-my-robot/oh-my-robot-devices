@@ -117,12 +117,12 @@ jobs:
       - name: Build device library
         env:
           OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
-        run: xmake tar_awdevices
+        run: xmake build tar_awdevices
 
       - name: Build device samples
         env:
           OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
         run: |
-          xmake device_sample_p1010b
-          xmake device_sample_dji_motor
-          xmake device_sample_spi_nor
+          xmake build device_sample_p1010b
+          xmake build device_sample_dji_motor
+          xmake build device_sample_spi_nor

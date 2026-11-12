@@ -35,8 +35,8 @@ xmake init_workspace --output=<工程壳目录> \
 ```sh
 export OM_FRAMEWORK_ROOT=<框架 checkout>
 xmake f --board=rm-c-board --os=freertos --toolchain=gnu-rm -m release
-xmake tar_awdevices
-xmake device_sample_p1010b
+xmake build tar_awdevices
+xmake build device_sample_p1010b
 ```
 
 host 仿真测试同样需要 `OM_FRAMEWORK_ROOT`：
