@@ -1,0 +1,128 @@
+# 器件库 CI：format + host-test + 目标构建（框架 + 器件联合）
+# 框架版本以 FRAMEWORK_REPOSITORY / FRAMEWORK_REF 固定，避免跟随 integration 漂移。
+name: ci
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+env:
+  # OMR-16 引导期：框架 OMR-16 分支尚未合入 integration。
+  # 合入后改为 oh-my-robot/oh-my-robot-framework + 固定 tag/commit。
+  FRAMEWORK_REPOSITORY: ErBamboo/oh-my-robot-framework
+  FRAMEWORK_REF: feature/OMR-16-devices-extract
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install clang-format 21 (pip wheel)
+        run: pip install clang-format==21.1.8
+
+      - name: Check format
+        run: |
+          find include src samples tests -name '*.[ch]' -print0 | xargs -0 clang-format --dry-run --Werror
+
+  host-test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout devices
+        uses: actions/checkout@v4
+
+      - name: Checkout framework
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FRAMEWORK_REPOSITORY }}
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: oh-my-robot
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          actions-cache-folder: '.xmake-cache'
+
+      - name: Configure host tests
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: xmake f -P tests/host/spi_nor_test -p linux -m debug
+
+      - name: Build host tests
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: xmake build -P tests/host/spi_nor_test
+
+      - name: Run host tests
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: xmake run -P tests/host/spi_nor_test host_spi_nor_test
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout devices
+        uses: actions/checkout@v4
+
+      - name: Checkout framework
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FRAMEWORK_REPOSITORY }}
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: oh-my-robot
+
+      - name: Setup xmake
+        uses: xmake-io/github-action-setup-xmake@v1
+        with:
+          xmake-version: latest
+          actions-cache-folder: '.xmake-cache'
+
+      - name: Setup GNU ARM Toolchain (official, pinned 14.2.rel1)
+        run: |
+          wget -q https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi.tar.xz -O /tmp/arm-tc.tar.xz
+          sudo mkdir -p /opt/arm-gnu
+          sudo tar -xJf /tmp/arm-tc.tar.xz -C /opt/arm-gnu --strip-components=1
+
+      - name: Create om_preset.lua
+        run: |
+          cat > om_preset.lua << 'EOF'
+          local preset = {
+            board = {name = "rm-a-board"},
+            os = {name = "freertos"},
+            toolchain_default = {name = "gnu-rm"},
+            toolchain_presets = {
+              ["gnu-rm"] = {
+                sdk = "/opt/arm-gnu",
+                bin = "/opt/arm-gnu/bin",
+              },
+            },
+          }
+          function get_preset() return preset end
+          EOF
+
+      - name: Configure
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: xmake f --board=rm-a-board --os=freertos --toolchain=gnu-rm -m release
+
+      - name: Build device library
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: xmake tar_awdevices
+
+      - name: Build device samples
+        env:
+          OM_FRAMEWORK_ROOT: ${{ github.workspace }}/oh-my-robot
+        run: |
+          xmake device_sample_p1010b
+          xmake device_sample_dji_motor
+          xmake device_sample_spi_nor
