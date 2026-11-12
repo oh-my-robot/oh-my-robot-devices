@@ -16,7 +16,7 @@ permissions:
 env:
   # 固定框架版本，避免跟随 integration 漂移；框架发版后改为 tag。
   FRAMEWORK_REPOSITORY: oh-my-robot/oh-my-robot-framework
-  FRAMEWORK_REF: cf1c27e
+  FRAMEWORK_REF: cf1c27e95730d46ade1ac312a190747abe0918a3
 
 jobs:
   format:
