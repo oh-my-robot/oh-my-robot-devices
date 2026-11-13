@@ -16,7 +16,7 @@ permissions:
 env:
   # 固定框架版本，避免跟随 integration 漂移；框架发版后改为 tag。
   FRAMEWORK_REPOSITORY: oh-my-robot/oh-my-robot-framework
-  FRAMEWORK_REF: cf1c27e95730d46ade1ac312a190747abe0918a3
+  FRAMEWORK_REF: d4c2c4c4b2cc6030cdeca8cf201a9c8e29f48757
 
 jobs:
   format:
@@ -31,6 +31,30 @@ jobs:
       - name: Check format
         run: |
           find include src samples tests -name '*.[ch]' -print0 | xargs -0 clang-format --dry-run --Werror
+
+  boundary:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout devices
+        uses: actions/checkout@v4
+
+      - name: Checkout framework
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.FRAMEWORK_REPOSITORY }}
+          ref: ${{ env.FRAMEWORK_REF }}
+          path: oh-my-robot
+
+      - name: Check device dependency boundaries
+        run: python3 oh-my-robot/tools/omcheck/check_devices_deps.py --devices-root .
+
+      - name: Verify negative fixture is rejected
+        run: |
+          if python3 oh-my-robot/tools/omcheck/check_devices_deps.py \
+              --devices-root oh-my-robot/tools/omcheck/fixtures/devices_dep_violation; then
+            echo "::error::negative devices dependency fixture unexpectedly passed"
+            exit 1
+          fi
 
   host-test:
     runs-on: ubuntu-latest
